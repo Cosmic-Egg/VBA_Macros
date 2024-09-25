@@ -204,3 +204,61 @@ Function filter_array_by_text_with_multiple_criteria(originalArray As Variant, c
     filter_array_by_text_with_multiple_criteria = filteredArray
 End Function
 
+Function filter_array_by_text_with_multiple_criteria_improved(originalArray As Variant, criteria As Variant, checkColumn As Long) As Variant
+    Dim filteredArray() As Variant
+    Dim tempArray() As Variant
+    Dim i As Long
+    Dim outputRow As Long
+    Dim match As Boolean
+
+    ' Check if originalArray has any rows
+    If IsEmpty(originalArray) Or (TypeName(originalArray) <> "Variant()" And UBound(originalArray, 1) < 1) Then
+        filter_array_by_text_with_multiple_criteria = Array()
+        Exit Function
+    End If
+
+    ' Initialize temporary storage for matches
+    ReDim tempArray(1 To UBound(originalArray, 1), 1 To UBound(originalArray, 2))
+    
+    ' Loop through the original array
+    outputRow = 0
+    For i = LBound(originalArray, 1) To UBound(originalArray, 1)
+        match = False ' Assume no match found initially
+
+        ' Loop through the criteria to check for matches
+        Dim j As Long
+        For j = LBound(criteria) To UBound(criteria)
+            If InStr(1, originalArray(i, checkColumn), criteria(j), vbTextCompare) > 0 Then
+                match = True ' Match found
+                Exit For
+            End If
+        Next j
+        
+        ' If a match was found, add the entire row to the temporary array
+        If match Then
+            outputRow = outputRow + 1
+            Dim colIndex As Long
+            For colIndex = LBound(originalArray, 2) To UBound(originalArray, 2)
+                tempArray(outputRow, colIndex) = originalArray(i, colIndex)
+            Next colIndex
+        End If
+    Next i
+
+    ' Resize the output array only once if outputRow > 0
+    If outputRow > 0 Then
+        ReDim filteredArray(1 To outputRow, 1 To UBound(originalArray, 2))
+        Dim k As Long
+        For k = 1 To outputRow
+            For colIndex = LBound(originalArray, 2) To UBound(originalArray, 2)
+                filteredArray(k, colIndex) = tempArray(k, colIndex)
+            Next colIndex
+        Next k
+    Else
+        ' Return an empty array if no matches were found
+        filter_array_by_text_with_multiple_criteria = Array()
+        Exit Function
+    End If
+
+    ' Return the filtered array
+    filter_array_by_text_with_multiple_criteria = filteredArray
+End Function
