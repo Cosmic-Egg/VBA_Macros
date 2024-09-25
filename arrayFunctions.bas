@@ -193,7 +193,10 @@ Function filter_array_by_text_with_multiple_criteria(originalArray As Variant, c
     
     ' Resize the output array to remove unused rows
     If outputRow > 0 Then
-        ReDim Preserve filteredArray(1 To outputRow, 1 To UBound(originalArray, 2))
+        filteredArray = application.transpose(filteredArray)
+        'ReDim Preserve filteredArray(1 To outputRow, 1 To UBound(originalArray, 2))
+        ReDim Preserve filteredArray(1 To UBound(originalArray, 2), 1 To outputRowput)
+        filteredArray = application.transpose(filteredArray)
     Else
         ' If no matches, return an empty array
         ReDim filteredArray(1 To 1, 1 To 1)
