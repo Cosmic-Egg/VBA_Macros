@@ -265,3 +265,63 @@ Function filter_array_by_text_with_multiple_criteria_improved(originalArray As V
     ' Return the filtered array
     filter_array_by_text_with_multiple_criteria = filteredArray
 End Function
+
+Function join_arrays(ByRef arr1 As Variant,ByRef arr2 As Variant, commonColIndex1 As Long, commonColIndex2 As Long) As Variant
+    Dim joinedArray() As Variant
+    Dim dict As Object
+    Dim totalRows As Long
+    Dim totalCols As Long
+    Dim i As Long, j As Long
+    Dim key As Variant
+    
+    ' Create a dictionary to hold the rows from the second array
+    Set dict = CreateObject("Scripting.Dictionary")
+    
+    ' Populate the dictionary with keys from the second array based on the common column
+    For i = LBound(arr2, 1) To UBound(arr2, 1)
+        key = arr2(i, commonColIndex2)
+        If Not dict.Exists(key) Then
+            dict.Add key, i ' Store the row index
+        End If
+    Next i
+
+    ' Calculate the total number of rows for the joined array
+    totalRows = 0
+    For i = LBound(arr1, 1) To UBound(arr1, 1)
+        key = arr1(i, commonColIndex1)
+        If dict.Exists(key) Then
+            totalRows = totalRows + 1
+        End If
+    Next i
+    
+    ' Calculate the total number of columns for the joined array
+    totalCols = UBound(arr1, 2) - LBound(arr1, 2) + 1 + UBound(arr2, 2) - LBound(arr2, 2) + 1
+    
+    ' Resize the joined array
+    ReDim joinedArray(0 To totalRows - 1, 0 To totalCols - 1)
+
+    ' Populate the joined array
+    Dim rowIndex As Long
+    rowIndex = 0
+    For i = LBound(arr1, 1) To UBound(arr1, 1)
+        key = arr1(i, commonColIndex1)
+        If dict.Exists(key) Then
+            ' Copy data from the first array
+            For j = LBound(arr1, 2) To UBound(arr1, 2)
+                joinedArray(rowIndex, j - LBound(arr1, 2)) = arr1(i, j)
+            Next j
+            
+            ' Copy data from the second array
+            Dim arr2Row As Long
+            arr2Row = dict(key) ' Get the row index from the dictionary
+            For j = LBound(arr2, 2) To UBound(arr2, 2)
+                joinedArray(rowIndex, j - LBound(arr1, 2) + UBound(arr1, 2) - LBound(arr1, 2) + 1) = arr2(arr2Row, j)
+            Next j
+            
+            rowIndex = rowIndex + 1
+        End If
+    Next i
+
+    ' Return the joined array
+    join_arrays = joinedArray
+End Function
