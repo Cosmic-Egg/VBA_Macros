@@ -298,11 +298,11 @@ Function join_arrays(ByRef arr1 As Variant,ByRef arr2 As Variant, commonColIndex
     totalCols = UBound(arr1, 2) - LBound(arr1, 2) + 1 + UBound(arr2, 2) - LBound(arr2, 2) + 1
     
     ' Resize the joined array
-    ReDim joinedArray(0 To totalRows - 1, 0 To totalCols - 1)
+    ReDim joinedArray(1 To totalRows, 1 To totalCols )
 
     ' Populate the joined array
     Dim rowIndex As Long
-    rowIndex = 0
+    rowIndex = 1
     For i = LBound(arr1, 1) To UBound(arr1, 1)
         key = arr1(i, commonColIndex1)
         If dict.Exists(key) Then
@@ -325,3 +325,45 @@ Function join_arrays(ByRef arr1 As Variant,ByRef arr2 As Variant, commonColIndex
     ' Return the joined array
     join_arrays = joinedArray
 End Function
+
+function groupArray(ByRef arr as variant,ByRef colIndexes as variant ,optional sumCol as long = -1)
+    dim hasSumCol as boolean : hasSumCol = False
+    dim dict as new dictionary
+    dim groupRow as long : groupRow =0
+    dim outArr as variant
+    dim outArrColumns as long : outArrColumns = ubound(colIndexes)
+    if sumCol >= 0 then
+        hasSumCol = True
+        outArrColumns = outArrColumns +1
+    end if
+    redim outArr(1 to Ubound(arr,1), 1 to outArrColumns)
+    for i = lbound(arr,1) to ubound(arr,1)
+
+        key = ""
+        
+        ' Build a key string from the specified column indexes
+        For j = LBound(colIndexes) To UBound(colIndexes)
+            key = key & CStr(arr(i, colIndexes(j))) & "|"
+        Next j
+        
+        ' Remove trailing "|"
+        If Len(key) > 0 Then key = Left(key, Len(key) - 1)
+
+        If Not dict.Exists(key) Then
+            groupRow = groupRow +1
+            dict(key) = groupRow
+            for n = LBound(colIndexes) To UBound(colIndexes)
+                outArr(groupRow,n) = arr(i,colIndexes(n))
+            next n
+        End If
+        
+        if hasSumCol then
+            currRow = dict(key)
+            outArr(currRow,outArrColumns) = outArr(currRow,outArrColumns) + arr(i,sumCol)
+        end if
+    next i
+
+    groupArray = outArr
+end function
+
+
