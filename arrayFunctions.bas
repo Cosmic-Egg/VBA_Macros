@@ -30,7 +30,7 @@ Function ExtractColumnsFromRange(rng As Range, ParamArray columns() As Variant) 
     ExtractColumnsFromRange = result
 End Function
 
-Sub get_current_region(ByRef rng as range, optional headerLength as long = 1) 
+Sub getCurrentRegion(ByRef rng as range, optional headerLength as long = 1) 
     set rng = rng.CurrentRegion
     set rng = rng.Offset(headerLength).Resize(rng.rows.count - headerLength)
 End Sub
@@ -81,7 +81,7 @@ Sub arraySetSize(ByRef destinationArray As Variant _
 End Sub
 
 
-Function filter_array_by_text(ByRef originalArray As Variant, criteria As String, columnIndex As Long) As Variant
+Function filterArrayByText(ByRef originalArray As Variant, criteria As String, columnIndex As Long) As Variant
     Dim filteredArray() As Variant
     Dim rowCount As Long, colCount As Long
     Dim i As Long, filteredCount As Long
@@ -114,11 +114,11 @@ Function filter_array_by_text(ByRef originalArray As Variant, criteria As String
     End If
 
     ' Return the filtered array
-    filter_array_by_text = filteredArray
+    filterArrayByText = filteredArray
 End Function
 
 
-Function sum_and_group_data(ByRef dataArray As Variant, category_column as Long, value_column as Long) As Variant
+Function sumAndGroupData(ByRef dataArray As Variant, categoryColumn as Long, valueColumn as Long) As Variant
     Dim dict As Object
     Dim category As Variant
     Dim value As Double
@@ -131,8 +131,8 @@ Function sum_and_group_data(ByRef dataArray As Variant, category_column as Long,
 
     ' Loop through the input array to sum values by category
     For i = LBound(dataArray, 1) To UBound(dataArray, 1)
-        category = dataArray(i, category_column) ' Column 1 (Category)
-        value = dataArray(i, value_column) ' Column 2 (Value)
+        category = dataArray(i, categoryColumn) ' Column 1 (Category)
+        value = dataArray(i, valueColumn) ' Column 2 (Value)
 
         ' If the category is not in the dictionary, add it
         If Not dict.Exists(category) Then
@@ -155,10 +155,10 @@ Function sum_and_group_data(ByRef dataArray As Variant, category_column as Long,
     Next category
 
     ' Return the result array
-    sum_and_group_data = resultArray
+    sumAndGroupData = resultArray
 End Function
 
-Function filter_array_by_text_with_multiple_criteria(originalArray As Variant, criteria As Variant, checkColumn As Long) As Variant
+Function filterArrayByTextWithMultipleCriteria(originalArray As Variant, criteria As Variant, checkColumn As Long) As Variant
     Dim filteredArray() As Variant
     Dim i As Long
     Dim outputRow As Long
@@ -204,10 +204,10 @@ Function filter_array_by_text_with_multiple_criteria(originalArray As Variant, c
     End If
 
     ' Return the filtered array
-    filter_array_by_text_with_multiple_criteria = filteredArray
+    filterArrayByTextWithMultipleCriteria = filteredArray
 End Function
 
-Function filter_array_by_text_with_multiple_criteria_improved(originalArray As Variant, criteria As Variant, checkColumn As Long) As Variant
+Function filterArrayByTextWithMultipleCriteriaImproved(originalArray As Variant, criteria As Variant, checkColumn As Long) As Variant
     Dim filteredArray() As Variant
     Dim tempArray() As Variant
     Dim i As Long
@@ -216,7 +216,7 @@ Function filter_array_by_text_with_multiple_criteria_improved(originalArray As V
 
     ' Check if originalArray has any rows
     If IsEmpty(originalArray) Or (TypeName(originalArray) <> "Variant()" And UBound(originalArray, 1) < 1) Then
-        filter_array_by_text_with_multiple_criteria = Array()
+        filterArrayByTextWithMultipleCriteria = Array()
         Exit Function
     End If
 
@@ -258,15 +258,15 @@ Function filter_array_by_text_with_multiple_criteria_improved(originalArray As V
         Next k
     Else
         ' Return an empty array if no matches were found
-        filter_array_by_text_with_multiple_criteria = Array()
+        filterArrayByTextWithMultipleCriteria = Array()
         Exit Function
     End If
 
     ' Return the filtered array
-    filter_array_by_text_with_multiple_criteria = filteredArray
+    filterArrayByTextWithMultipleCriteria = filteredArray
 End Function
 
-Function join_arrays(ByRef arr1 As Variant,ByRef arr2 As Variant, commonColIndex1 As Long, commonColIndex2 As Long) As Variant
+Function joinArrays(ByRef arr1 As Variant,ByRef arr2 As Variant, commonColIndex1 As Long, commonColIndex2 As Long) As Variant
     Dim joinedArray() As Variant
     Dim dict As Object
     Dim totalRows As Long
@@ -323,7 +323,7 @@ Function join_arrays(ByRef arr1 As Variant,ByRef arr2 As Variant, commonColIndex
     Next i
 
     ' Return the joined array
-    join_arrays = joinedArray
+    joinArrays = joinedArray
 End Function
 
 function groupArray(ByRef arr as variant,ByRef colIndexes as variant ,optional sumCol as long = -1)
