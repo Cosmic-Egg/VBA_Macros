@@ -35,7 +35,7 @@ Private Sub Worksheet_BeforeDoubleClick(ByVal Target As Range, Cancel As Boolean
     Dim fileDialog As Object
     
     ' Check if the double-clicked cell is A1 on Sheet1
-    If Not Intersect(Target, Me.Range("A1")) Is Nothing And Me.Name = "Sheet1" Then
+    If Not Intersect(Target, Me.Range("A1")) Is Nothing And Me.Name = "Sheet1" Then 'You can edit the sheetname and range as needed
         ' Open file dialog to select a file
         Set fileDialog = Application.FileDialog(msoFileDialogFilePicker)
         
@@ -50,5 +50,49 @@ Private Sub Worksheet_BeforeDoubleClick(ByVal Target As Range, Cancel As Boolean
             ' Prevent the default double-click action (such as editing the cell)
             Cancel = True
         End If
+    End If
+End Sub
+
+Sub SearchFileByName()
+    Dim searchText As String
+    Dim searchDirectory As String
+    Dim fileName As String
+    Dim filePath As String
+    Dim resultRange As Range
+    Dim resultCell As Range
+    
+    ' Get the search text from cell B1
+    searchText = ThisWorkbook.Sheets("Sheet1").Range("B1").Value
+    
+    ' Specify the directory to search in
+    searchDirectory = "C:\Path\To\Your\Directory\" ' Change as needed
+    
+    ' Set the range to output the results (starting from cell C1)
+    Set resultRange = ThisWorkbook.Sheets("Sheet1").Range("C1")
+    Set resultCell = resultRange
+    
+    ' Check if the directory exists
+    If Dir(searchDirectory, vbDirectory) = "" Then
+        MsgBox "The specified directory does not exist.", vbExclamation
+        Exit Sub
+    End If
+    
+    ' Search for files in the directory
+    fileName = Dir(searchDirectory & "*.*")
+    Do While fileName <> ""
+        ' Check if the file name contains the search text
+        If InStr(1, fileName, searchText, vbTextCompare) > 0 Then
+            ' Output the matching file name to the result range
+            resultCell.Value = fileName
+            ' Move to the next cell in the result range
+            Set resultCell = resultCell.Offset(1, 0)
+        End If
+        ' Get the next file name
+        fileName = Dir
+    Loop
+    
+    ' Inform the user if no matching files were found
+    If resultRange.Value = "" Then
+        MsgBox "No files found containing the text: " & searchText, vbInformation
     End If
 End Sub
