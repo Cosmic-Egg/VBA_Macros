@@ -67,17 +67,19 @@ let
         RestRows = Table.Skip(Cleaned, 2),
         Recombined = Table.Combine({NewTop2, RestRows}),
 
-        // ✅ Remove columns where Row 1 doesn't follow H####-###-###
+        // ✅ Get first row as record
+        FirstRowRecord = Recombined{0},
+
+        // ✅ Filter column names where first row matches H####-###-###
         ValidColumnNames = List.Select(
             Table.ColumnNames(Recombined),
-            each Text.Length(Text.From(Record.Field(Recombined, _){0})) = 12 
-                and Text.Start(Text.From(Record.Field(Recombined, _){0}), 1) = "H" 
-                and Text.Middle(Text.From(Record.Field(Recombined, _){0}), 1, 4) = "H" 
-                and Text.Middle(Text.From(Record.Field(Recombined, _){0}), 5, 4) = "-" 
-                and Text.Middle(Text.From(Record.Field(Recombined, _){0}), 10, 3) = "-" 
-                and Text.Middle(Text.From(Record.Field(Recombined, _){0}), 7, 3) <> null
+            each
+                let
+                    val = try Text.From(Record.Field(FirstRowRecord, _)) otherwise "",
+                    pattern = Text.RegexReplace(val, "H\\d{4}-\\d{3}-\\d{3}", "")
+                in
+                    val <> "" and pattern = ""
         ),
-
         FilteredColumns = Table.SelectColumns(Recombined, ValidColumnNames),
 
         // ✅ OPTIONAL: Add RowIndex and rename columns by file
