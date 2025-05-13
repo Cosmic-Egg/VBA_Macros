@@ -1,32 +1,39 @@
 let
-    // 1. Load all files from the folder
-    Source = Folder.Files("C:\Your\Folder\Path"),  // <--  Change this path
+    // 1. Get files
+    Source = Folder.Files("C:\Your\Folder\Path"),  // <-- update path
     FilterXLSM = Table.SelectRows(Source, each Text.EndsWith([Extension], ".xlsm")),
 
-    // 2. Extract the "Benefit Input" sheet from each file
+    // 2. Extract "Benefit Input" sheet safely
     AddSheet = Table.AddColumn(FilterXLSM, "Sheet", each try 
         Table.SelectRows(Excel.Workbook([Content], true), each [Item] = "Benefit Input" and [Kind] = "Sheet"){0}[Data] 
         otherwise null),
 
-    // 3. Remove any rows without the target sheet
+    // 3. Filter out nulls
     Filtered = Table.SelectRows(AddSheet, each [Sheet] <> null),
 
-    // 4. Remove first 7 rows, then first 7 columns, and remove blank columns based on last row
+    // 4. Clean and prep each file
     TransformEach = Table.AddColumn(Filtered, "Cleaned", each 
         let
+            FileName = Text.BeforeDelimiter([Name], ".xlsm"),
             Original = [Sheet],
             RemovedTop = Table.Skip(Original, 7),
-            RemovedCols = Table.RemoveColumns(RemovedTop, List.FirstN(Table.ColumnNames(RemovedTop), 7)),
-            LastRow = Table.LastN(RemovedCols, 1){0},
-            NonBlankCols = List.Select(Table.ColumnNames(RemovedCols), each Record.Field(LastRow, _) <> null and Text.Trim(Text.From(Record.Field(LastRow, _))) <> ""),
-            Cleaned = Table.SelectColumns(RemovedCols, NonBlankCols),
-            WithIndex = Table.AddIndexColumn(Cleaned, "RowIndex", 1, 1, Int64.Type),
-            Renamed = Table.RenameColumns(WithIndex, List.Transform(List.RemoveItems(Table.ColumnNames(WithIndex), {"RowIndex"}), each {_, Text.BeforeDelimiter([Name], ".xlsm") & "_" & _}))
+            RemovedFirstCols = Table.RemoveColumns(RemovedTop, List.FirstN(Table.ColumnNames(RemovedTop), 7)),
+            // Determine columns that contain any non-null value
+            NonBlankCols = List.Select(
+                Table.ColumnNames(RemovedFirstCols),
+                (col) => List.NonNullCount(RemovedFirstCols[col]) > 0
+            ),
+            CleanedCols = Table.SelectColumns(RemovedFirstCols, NonBlankCols),
+            WithIndex = Table.AddIndexColumn(CleanedCols, "RowIndex", 1, 1, Int64.Type),
+            Renamed = Table.RenameColumns(WithIndex, List.Transform(
+                List.RemoveItems(Table.ColumnNames(WithIndex), {"RowIndex"}), 
+                each {_, FileName & "_" & _}
+            ))
         in
             Renamed
     ),
 
-    // 5. Get the list of cleaned tables
+    // 5. Get cleaned tables
     TablesToMerge = TransformEach[Cleaned],
 
     // 6. Merge all tables by RowIndex
@@ -36,7 +43,7 @@ let
         (state, current) => Table.Join(state, "RowIndex", current, "RowIndex", JoinKind.Inner)
     ),
 
-    // 7. Remove RowIndex column
+    // 7. Remove helper index
     Final = Table.RemoveColumns(Merged, {"RowIndex"})
 in
     Final
