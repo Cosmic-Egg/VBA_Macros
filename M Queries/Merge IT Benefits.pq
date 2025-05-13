@@ -1,54 +1,60 @@
 let
-    // 1. Load all .xlsm files from folder
-    Source = Folder.Files("C:\Your\Folder\Path"),  // 🔁 Update this
-    XLSM_Files = Table.SelectRows(Source, each Text.EndsWith([Extension], ".xlsm")),
+    // STEP 1: Load all .xlsm files from the folder
+    Source = Folder.Files("C:\Your\Folder\Path"),  // 🔁 Change to your path
+    XLSMFiles = Table.SelectRows(Source, each Text.EndsWith([Extension], ".xlsm")),
 
-    // 2. Extract "Benefit Input" sheet from each file
-    AddSheet = Table.AddColumn(XLSM_Files, "SheetData", each try 
-        Table.SelectRows(Excel.Workbook([Content], true), each [Item] = "Benefit Input" and [Kind] = "Sheet"){0}[Data] 
+    // STEP 2: Extract the 'Benefit Input' sheet from each file
+    ExtractedSheets = Table.AddColumn(XLSMFiles, "Sheet", each try 
+        Table.SelectRows(Excel.Workbook([Content], true), each [Item] = "Benefit Input" and [Kind] = "Sheet"){0}[Data]
         otherwise null),
 
-    // 3. Keep only valid sheets
-    ValidSheets = Table.SelectRows(AddSheet, each [SheetData] <> null),
+    // STEP 3: Remove files where the sheet wasn't found
+    ValidSheets = Table.SelectRows(ExtractedSheets, each [Sheet] <> null),
 
-    // 4. Clean each sheet
-    CleanedSheets = Table.AddColumn(ValidSheets, "Cleaned", each 
+    // STEP 4: Clean each sheet
+    ProcessedSheets = Table.AddColumn(ValidSheets, "Processed", each 
         let
             FileName = Text.BeforeDelimiter([Name], ".xlsm"),
-            Sheet = [SheetData],
-            SkipRows = Table.Skip(Sheet, 7),
-            SkipCols = Table.RemoveColumns(SkipRows, List.FirstN(Table.ColumnNames(SkipRows), 7)),
+            RawTable = [Sheet],
 
-            // ✅ Filter columns that have at least one non-null value
-            ColumnsToKeep = List.Select(
-                Table.ColumnNames(SkipCols),
-                (cName) => List.NonNullCount(List.Transform(Table.ToRows(SkipCols), each Record.Field(_, cName))) > 0
+            // Skip first 7 rows
+            SkippedRows = Table.Skip(RawTable, 7),
+
+            // Remove first 7 columns
+            RemainingCols = Table.RemoveColumns(SkippedRows, List.FirstN(Table.ColumnNames(SkippedRows), 7)),
+
+            // Clean out columns that are entirely blank
+            NonBlankCols = List.Select(
+                Table.ColumnNames(RemainingCols),
+                (colName) =>
+                    let
+                        colValues = try Table.Column(RemainingCols, colName) otherwise {},
+                        nonNullValues = List.Select(colValues, each _ <> null and _ <> "")
+                    in
+                        List.Count(nonNullValues) > 0
             ),
+            Filtered = Table.SelectColumns(RemainingCols, NonBlankCols),
 
-            Trimmed = Table.SelectColumns(SkipCols, ColumnsToKeep),
+            // Add an index for horizontal joining
+            WithIndex = Table.AddIndexColumn(Filtered, "RowIndex", 1, 1, Int64.Type),
 
-            // Add index to merge later
-            WithIndex = Table.AddIndexColumn(Trimmed, "RowIndex", 1, 1, Int64.Type),
-
-            // ✅ Rename columns safely
+            // Rename columns to include filename
             ColumnsToRename = List.RemoveItems(Table.ColumnNames(WithIndex), {"RowIndex"}),
-            RenamePairs = List.Transform(ColumnsToRename, each {_, FileName & "_" & _}),
-            Renamed = if List.Count(RenamePairs) > 0 then Table.RenameColumns(WithIndex, RenamePairs) else WithIndex
+            RenameMap = List.Transform(ColumnsToRename, each {_, FileName & "_" & _}),
+            Renamed = Table.RenameColumns(WithIndex, RenameMap, MissingField.Ignore)
         in
             Renamed
     ),
 
-    // 5. Combine all cleaned tables
-    TableList = CleanedSheets[Cleaned],
-
-    // 6. Merge horizontally by RowIndex
+    // STEP 5: Combine all processed tables horizontally
+    TablesToJoin = ProcessedSheets[Processed],
     Merged = List.Accumulate(
-        List.Skip(TableList, 1),
-        List.First(TableList),
-        (state, current) => Table.Join(state, "RowIndex", current, "RowIndex", JoinKind.Inner)
+        List.Skip(TablesToJoin, 1),
+        List.First(TablesToJoin),
+        (state, next) => Table.Join(state, "RowIndex", next, "RowIndex", JoinKind.Inner)
     ),
 
-    // 7. Remove RowIndex
+    // STEP 6: Remove the RowIndex column
     Final = Table.RemoveColumns(Merged, {"RowIndex"})
 in
     Final
