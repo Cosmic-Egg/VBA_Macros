@@ -84,20 +84,24 @@ let
                     List.NonNullCount(
                         List.Transform(
                             {Text.Range(val, 1, 4), Text.Range(val, 6, 3), Text.Range(val, 10, 3)},
-                            each try Value.Is(Number.FromText(_), number) otherwise false
+                            each try Value.Is(Number.FromText(_), type number) otherwise false
                         )
                     ) = 3
             in
                 isMatch
         ),
-        
+
         FilteredColumns = Table.SelectColumns(Recombined, ValidColumnNames),
 
         // ✅ OPTIONAL: Add RowIndex and rename columns by file
-        WithIndex = Table.AddIndexColumn(FilteredColumns, "RowIndex", 1, 1, Int64.Type),
-        ColumnsToRename = List.RemoveItems(Table.ColumnNames(WithIndex), {"RowIndex"}),
-        RenameMap = List.Transform(ColumnsToRename, each {_, FileName & "_" & _}),
-        Renamed = Table.RenameColumns(WithIndex, RenameMap, MissingField.Ignore)
+        //WithIndex = Table.AddIndexColumn(FilteredColumns, "RowIndex", 1, 1, Int64.Type),
+        //ColumnsToRename = List.RemoveItems(Table.ColumnNames(WithIndex), {"RowIndex"}),
+        //RenameMap = List.Transform(ColumnsToRename, each {_, FileName & "_" & _}),
+        //Renamed = Table.RenameColumns(WithIndex, RenameMap, MissingField.Ignore)
+        ColCount2 = List.Count(Table.ColumnNames(FilteredColumns)),
+        NewNames = List.Transform({1..ColCount2}, each FileName & "_" & Text.From(_)),
+        RenameMap = List.Zip({Table.ColumnNames(FilteredColumns), NewNames}),
+        Renamed = Table.RenameColumns(FilteredColumns, RenameMap, MissingField.Ignore)
     in
         Renamed
 
