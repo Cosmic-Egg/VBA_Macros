@@ -47,20 +47,33 @@ let
         Row2 = PadRow(RawRow2, ColCount),
 
         // ✅ Apply transformation: if Row2 = "OON", fill Row1 from previous Row1 column
-        ModifiedRow1 = List.Transform(
+        ModifiedRow1Full = List.Transform(
             List.Zip({Row1, Row2, {null} & Row1}),
-            each if _{1} = "OON" then _{2} else _{0}
+            each 
+                let
+                    val1 = _{0},
+                    val2 = _{1},
+                    prev = _{2}
+                in
+                    if Text.From(val2) = "OON" then prev else val1
         ),
 
-        // ✅ Build new top two rows
-        NewTop2 = Table.FromRows({ModifiedRow1, Row2}, ColNames),
+        // ✅ Truncate to match exact column count
+        ModifiedRow1 = List.FirstN(ModifiedRow1Full, ColCount),
 
-        // ✅ Combine with the rest of the data
-        RestRows = Table.Skip(Cleaned, 2),
-        Recombined = Table.Combine({NewTop2, RestRows}),
+        // ✅ Remove columns where the value in Row 1 doesn't match H####-###-###
+        ValidColumnNames = List.Select(
+            List.Zip({ModifiedRow1, ColNames}),
+            each Text.Length(Text.From(_{0})) = 12 and Text.Start(Text.From(_{0}), 1) = "H" and Text.Middle(Text.From(_{0}), 1, 4) = "H" and Text.Middle(Text.From(_{0}), 5, 4) = "-" and Text.Middle(Text.From(_{0}), 10, 3) = "-" and Text.Middle(Text.From(_{0}), 7, 3) <> null
+        ),
+
+        ValidColumnNamesOnly = List.Transform(ValidColumnNames, each _{1}),
+
+        // ✅ Filter columns that don't match the pattern in Row 1 (H####-###-###)
+        FilteredColumns = Table.SelectColumns(Cleaned, ValidColumnNamesOnly),
 
         // ✅ OPTIONAL: Add RowIndex and rename columns by file
-        WithIndex = Table.AddIndexColumn(Recombined, "RowIndex", 1, 1, Int64.Type),
+        WithIndex = Table.AddIndexColumn(FilteredColumns, "RowIndex", 1, 1, Int64.Type),
         ColumnsToRename = List.RemoveItems(Table.ColumnNames(WithIndex), {"RowIndex"}),
         RenameMap = List.Transform(ColumnsToRename, each {_, FileName & "_" & _}),
         Renamed = Table.RenameColumns(WithIndex, RenameMap, MissingField.Ignore)
