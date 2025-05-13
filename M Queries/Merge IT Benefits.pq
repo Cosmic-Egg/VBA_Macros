@@ -72,14 +72,25 @@ let
 
         // ✅ Filter column names where first row matches H####-###-###
         ValidColumnNames = List.Select(
-            Table.ColumnNames(Recombined),
-            each
-                let
-                    val = try Text.From(Record.Field(FirstRowRecord, _)) otherwise "",
-                    pattern = Text.RegexReplace(val, "H\\d{4}-\\d{3}-\\d{3}", "")
-                in
-                    val <> "" and pattern = ""
+        Table.ColumnNames(Recombined),
+        each
+            let
+                val = try Text.From(Record.Field(FirstRowRecord, _)) otherwise "",
+                isMatch = 
+                    Text.StartsWith(val, "H") and 
+                    Text.Length(val) = 13 and
+                    Text.Middle(val, 5, 1) = "-" and 
+                    Text.Middle(val, 9, 1) = "-" and
+                    List.NonNullCount(
+                        List.Transform(
+                            {Text.Range(val, 1, 4), Text.Range(val, 6, 3), Text.Range(val, 10, 3)},
+                            each try Value.Is(Number.FromText(_), number) otherwise false
+                        )
+                    ) = 3
+            in
+                isMatch
         ),
+        
         FilteredColumns = Table.SelectColumns(Recombined, ValidColumnNames),
 
         // ✅ OPTIONAL: Add RowIndex and rename columns by file
