@@ -1,6 +1,6 @@
 let
     // STEP 1: Load all .xlsm files from the folder
-    Source = Folder.Files("C:\Your\Folder\Path"),  // 🔁 Change to your path
+    Source = Folder.Files("C:\Your\Folder\Path"),  // 🔁 Change this path
     XLSMFiles = Table.SelectRows(Source, each Text.EndsWith([Extension], ".xlsm")),
 
     // STEP 2: Extract the 'Benefit Input' sheet from each file
@@ -13,37 +13,36 @@ let
 
     // STEP 4: Clean each sheet
     ProcessedSheets = Table.AddColumn(ValidSheets, "Processed", each 
-        let
-            FileName = Text.BeforeDelimiter([Name], ".xlsm"),
-            RawTable = [Sheet],
+    let
+        FileName = Text.BeforeDelimiter([Name], ".xlsm"),
+        RawTable = [Sheet],
 
-            // Skip first 7 rows
-            SkippedRows = Table.Skip(RawTable, 7),
+        SkippedRows = Table.Skip(RawTable, 7),
+        RemainingCols = Table.RemoveColumns(SkippedRows, List.FirstN(Table.ColumnNames(SkippedRows), 7)),
 
-            // Remove first 7 columns
-            RemainingCols = Table.RemoveColumns(SkippedRows, List.FirstN(Table.ColumnNames(SkippedRows), 7)),
+        // ✅ Replace Excel errors (like #N/A) with nulls
+        Cleaned = Table.ReplaceErrorValues(RemainingCols, List.Transform(Table.ColumnNames(RemainingCols), each {_, null})),
 
-            // Clean out columns that are entirely blank
-            NonBlankCols = List.Select(
-                Table.ColumnNames(RemainingCols),
-                (colName) =>
-                    let
-                        colValues = try Table.Column(RemainingCols, colName) otherwise {},
-                        nonNullValues = List.Select(colValues, each _ <> null and _ <> "")
-                    in
-                        List.Count(nonNullValues) > 0
-            ),
-            Filtered = Table.SelectColumns(RemainingCols, NonBlankCols),
+        // ✅ Skip columns that are entirely blank
+        NonBlankCols = List.Select(
+            Table.ColumnNames(Cleaned),
+            (colName) =>
+                let
+                    colValues = Table.Column(Cleaned, colName),
+                    nonNullValues = List.Select(colValues, each _ <> null and _ <> "")
+                in
+                    List.Count(nonNullValues) > 0
+        ),
 
-            // Add an index for horizontal joining
-            WithIndex = Table.AddIndexColumn(Filtered, "RowIndex", 1, 1, Int64.Type),
+        Filtered = Table.SelectColumns(Cleaned, NonBlankCols),
 
-            // Rename columns to include filename
-            ColumnsToRename = List.RemoveItems(Table.ColumnNames(WithIndex), {"RowIndex"}),
-            RenameMap = List.Transform(ColumnsToRename, each {_, FileName & "_" & _}),
-            Renamed = Table.RenameColumns(WithIndex, RenameMap, MissingField.Ignore)
-        in
-            Renamed
+        WithIndex = Table.AddIndexColumn(Filtered, "RowIndex", 1, 1, Int64.Type),
+        ColumnsToRename = List.RemoveItems(Table.ColumnNames(WithIndex), {"RowIndex"}),
+        RenameMap = List.Transform(ColumnsToRename, each {_, FileName & "_" & _}),
+        Renamed = Table.RenameColumns(WithIndex, RenameMap, MissingField.Ignore)
+    in
+        Renamed
+
     ),
 
     // STEP 5: Combine all processed tables horizontally
@@ -54,7 +53,7 @@ let
         (state, next) => Table.Join(state, "RowIndex", next, "RowIndex", JoinKind.Inner)
     ),
 
-    // STEP 6: Remove the RowIndex column
+    // STEP 6: Remove index column
     Final = Table.RemoveColumns(Merged, {"RowIndex"})
 in
     Final
