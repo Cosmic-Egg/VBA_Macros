@@ -243,3 +243,28 @@ Function filter_array_by_text_with_multiple_criteria(originalArray As Variant, c
     filter_array_by_text_with_multiple_criteria = filteredArray
 End Function
 
+Function create_array_from_range(sourceRange As Range _
+                                , Optional headerSize as long =1 _
+                                , Optional startCol as long = 1 _
+                                , Optional numRows as long = 0 _
+                                , Optional numCol as long = 0) As Variant
+
+    dim dataRegion as Range
+    if sourceRange.Rows.Count = 1 then
+        Set dataRegion = sourceRange.CurrentRegion
+    else
+        set dataRegion = sourceRange
+    end if
+
+    dim arrayRowCount as long, arrayColCount as long
+    arrayRowCount = dataRegion.Rows.Count - headerSize
+    arrayColCount = dataRegion.Columns.Count - startCol + 1
+    if numRows > 0 then
+        arrayRowCount = numRows
+    end if
+    if numCol > 0 then
+        arrayColCount = numCol
+    end if
+    set dataRegion = dataRegion.Offset(headerSize, startCol -1).Resize(arrayRowCount, arrayColCount)
+    create_array_from_range = dataRegion.Value
+End Function
