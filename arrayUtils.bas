@@ -268,3 +268,39 @@ Function create_array_from_range(sourceRange As Range _
     set dataRegion = dataRegion.Offset(headerSize, startCol -1).Resize(arrayRowCount, arrayColCount)
     create_array_from_range = dataRegion.Value
 End Function
+
+Function RemoveBlankColumns(ByRef dataArray As Variant, targetRow As Long) As Variant
+    Dim i As Long, j As Long, newColCount As Long
+    Dim numRows As Long, numCols As Long
+    Dim tempArray() As Variant
+    Dim colIsValid() As Boolean
+
+    ' Get array dimensions
+    numRows = UBound(dataArray, 1)
+    numCols = UBound(dataArray, 2)
+    
+    ' Determine valid columns
+    ReDim colIsValid(1 To numCols)
+    newColCount = 0
+    For j = 1 To numCols
+        If Trim(CStr(dataArray(targetRow, j))) <> "" Then
+            colIsValid(j) = True
+            newColCount = newColCount + 1
+        End If
+    Next j
+    
+    ' Create new array with valid columns only
+    ReDim tempArray(1 To numRows, 1 To newColCount)
+    
+    newColCount = 0
+    For j = 1 To numCols
+        If colIsValid(j) Then
+            newColCount = newColCount + 1
+            For i = 1 To numRows
+                tempArray(i, newColCount) = dataArray(i, j)
+            Next i
+        End If
+    Next j
+    
+    RemoveBlankColumns = tempArray
+End Function
